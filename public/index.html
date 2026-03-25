@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GEO content optimiser</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #ffffff;
+    --bg-secondary: #f5f5f4;
+    --bg-info: #e6f1fb;
+    --text: #1a1a1a;
+    --text-secondary: #6b6b6b;
+    --text-tertiary: #a0a0a0;
+    --text-info: #185fa5;
+    --text-danger: #a32d2d;
+    --border: rgba(0,0,0,0.12);
+    --border-md: rgba(0,0,0,0.25);
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1e1e1e;
+      --bg-secondary: #2a2a2a;
+      --bg-info: #0c2a44;
+      --text: #e8e8e8;
+      --text-secondary: #a0a0a0;
+      --text-tertiary: #666666;
+      --text-info: #85b7eb;
+      --text-danger: #f09595;
+      --border: rgba(255,255,255,0.1);
+      --border-md: rgba(255,255,255,0.22);
+    }
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg-secondary);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+
+  .container { max-width: 780px; margin: 0 auto; }
+
+  header { margin-bottom: 2rem; }
+  header h1 { font-size: 22px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+  header p { font-size: 14px; color: var(--text-secondary); }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 8px;
+  }
+
+  .card {
+    background: var(--bg);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .tab-row {
+    display: flex;
+    gap: 2px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    padding: 3px;
+    margin-bottom: 12px;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 6px;
+    font-size: 13px;
+    text-align: center;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-family: var(--font);
+    transition: background 0.12s;
+  }
+
+  .tab.active {
+    background: var(--bg);
+    color: var(--text);
+    font-weight: 500;
+    border: 0.5px solid var(--border);
+  }
+
+  .drop-zone {
+    border: 1px dashed var(--border-md);
+    border-radius: var(--radius-md);
+    padding: 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: background 0.15s;
+    position: relative;
+  }
+
+  .drop-zone:hover, .drop-zone.drag-over { background: var(--bg-secondary); }
+
+  .drop-zone input[type=file] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .drop-zone-label { font-size: 14px; color: var(--text-secondary); pointer-events: none; }
+  .drop-zone-label span { color: var(--text-info); font-weight: 500; }
+
+  .url-row { display: flex; gap: 8px; }
+
+  input[type=text], textarea, select {
+    font-family: var(--font);
+    font-size: 14px;
+    color: var(--text);
+    background: var(--bg-secondary);
+    border: 0.5px solid var(--border-md);
+    border-radius: var(--radius-md);
+  }
+
+  input[type=text]:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: var(--text-info);
+  }
+
+  .url-row input[type=text] { flex: 1; padding: 8px 12px; }
+
+  textarea {
+    width: 100%;
+    min-height: 130px;
+    padding: 10px 12px;
+    line-height: 1.65;
+    resize: vertical;
+  }
+
+  select { width: 100%; padding: 8px 10px; cursor: pointer; }
+
+  .custom-input {
+    width: 100%;
+    margin-top: 6px;
+    padding: 8px 12px;
+    font-size: 14px;
+    color: var(--text);
+    background: var(--bg-secondary);
+    border: 0.5px solid var(--border-md);
+    border-radius: var(--radius-md);
+    font-family: var(--font);
+  }
+
+  .custom-input::placeholder { color: var(--text-tertiary); }
+  .custom-input:focus { outline: none; border-color: var(--text-info); }
+
+  .char-count { font-size: 12px; color: var(--text-tertiary); text-align: right; margin-top: 4px; }
+
+  .pill-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+
+  .pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-secondary);
+    border: 0.5px solid var(--border);
+    border-radius: 100px;
+    padding: 4px 10px;
+    font-size: 13px;
+    color: var(--text);
+  }
+
+  .pill-ref { background: var(--bg-info); border-color: transparent; color: var(--text-info); }
+
+  .pill button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 16px;
+    line-height: 1;
+    padding: 0;
+  }
+
+  .pill button:hover { color: var(--text-danger); }
+
+  .options-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 1rem;
+  }
+
+  @media (max-width: 520px) { .options-grid { grid-template-columns: 1fr; } }
+
+  .option-label { font-size: 13px; color: var(--text-secondary); margin-bottom: 4px; }
+
+  .btn {
+    font-family: var(--font);
+    font-size: 14px;
+    border-radius: var(--radius-md);
+    border: 0.5px solid var(--border-md);
+    cursor: pointer;
+    padding: 8px 14px;
+    background: transparent;
+    color: var(--text-secondary);
+    transition: background 0.12s;
+  }
+
+  .btn:hover { background: var(--bg-secondary); color: var(--text); }
+
+  .run-btn {
+    width: 100%;
+    padding: 11px;
+    font-size: 15px;
+    font-weight: 500;
+    border-radius: var(--radius-md);
+    border: none;
+    background: var(--text);
+    color: var(--bg);
+    cursor: pointer;
+    font-family: var(--font);
+    transition: opacity 0.15s;
+  }
+
+  .run-btn:hover { opacity: 0.85; }
+  .run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .divider { border: none; border-top: 0.5px solid var(--border); margin: 1.25rem 0; }
+
+  .output-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .output-area {
+    background: var(--bg-secondary);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    min-height: 120px;
+    font-size: 14px;
+    line-height: 1.8;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: var(--font);
+  }
+
+  .output-placeholder { color: var(--text-tertiary); }
+
+  .error-msg { color: var(--text-danger); font-size: 13px; margin-top: 6px; }
+
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>GEO content optimiser</h1>
+    <p>Transform your content to surface in AI-generated recommendations, not just search rankings.</p>
+  </header>
+
+  <div class="section-label">Content to optimise</div>
+  <div class="card">
+    <div class="tab-row">
+      <button class="tab active" onclick="switchTab(this,'upload')">Upload file</button>
+      <button class="tab" onclick="switchTab(this,'url')">URL</button>
+      <button class="tab" onclick="switchTab(this,'paste')">Paste text</button>
+    </div>
+
+    <div id="tab-upload">
+      <div class="drop-zone" id="mainDrop"
+        ondragover="onDragOver(event,'mainDrop')"
+        ondragleave="onDragLeave(event,'mainDrop')"
+        ondrop="onDrop(event,'main')">
+        <input type="file" accept=".txt,.doc,.docx" onchange="onFileChange(event,'main')" />
+        <div class="drop-zone-label">Drop a <span>.txt or .doc/.docx</span> file here, or <span>browse</span></div>
+      </div>
+    </div>
+
+    <div id="tab-url" style="display:none">
+      <div class="url-row" style="margin-top:4px;">
+        <input type="text" id="urlInput" placeholder="https://example.com/article" />
+        <button class="btn" onclick="addUrl()" style="white-space:nowrap">Add URL</button>
+      </div>
+      <div id="urlError" class="error-msg"></div>
+    </div>
+
+    <div id="tab-paste" style="display:none">
+      <textarea id="pasteInput" placeholder="Paste your content here..." oninput="updateCharCount()"></textarea>
+      <div class="char-count" id="charCount">0 characters</div>
+    </div>
+
+    <div class="pill-list" id="mainPills"></div>
+  </div>
+
+  <div class="section-label">Reference documents (optional)</div>
+  <div class="card">
+    <div class="drop-zone" id="refDrop"
+      ondragover="onDragOver(event,'refDrop')"
+      ondragleave="onDragLeave(event,'refDrop')"
+      ondrop="onDrop(event,'ref')">
+      <input type="file" accept=".txt,.doc,.docx,.pdf" multiple onchange="onFileChange(event,'ref')" />
+      <div class="drop-zone-label">Add <span>brand messaging, sales materials, fact sheets</span> for context</div>
+    </div>
+    <div class="pill-list" id="refPills"></div>
+  </div>
+
+  <div class="options-grid">
+    <div>
+      <div class="option-label">Content type</div>
+      <select id="contentType">
+        <option value="service page">Service page</option>
+        <option value="blog post">Blog post</option>
+        <option value="case study">Case study</option>
+        <option value="product page">Product page</option>
+        <option value="landing page">Landing page</option>
+        <option value="about page">About page</option>
+        <option value="general content">General content</option>
+      </select>
+    </div>
+    <div>
+      <div class="option-label">Target audience</div>
+      <select id="audience" onchange="onAudienceChange()">
+        <option value="IT Director or IT Manager">IT Director / IT Manager</option>
+        <option value="Compliance Manager or Risk Manager">Compliance Manager / Risk Manager</option>
+        <option value="Marketing Manager or Marketing Director">Marketing Manager / Director</option>
+        <option value="C-suite executive such as CEO, COO or CFO">C-suite (CEO, COO, CFO)</option>
+        <option value="HR Manager or HR Director">HR Manager / HR Director</option>
+        <option value="Operations Manager">Operations Manager</option>
+        <option value="General business buyer or decision maker">General business buyer</option>
+        <option value="custom">Custom...</option>
+      </select>
+      <input type="text" id="customAudience" class="custom-input" placeholder="Describe your target audience" style="display:none" />
+    </div>
+  </div>
+
+  <button class="run-btn" id="runBtn" onclick="runGeo()">Optimise for GEO</button>
+  <div id="runError" class="error-msg"></div>
+
+  <hr class="divider" />
+
+  <div class="output-toolbar">
+    <div class="section-label" style="margin:0">GEO-optimised output</div>
+    <button class="btn" id="copyBtn" onclick="copyOutput()" style="display:none">Copy output</button>
+  </div>
+  <div class="output-area" id="outputArea">
+    <span class="output-placeholder">Your GEO-optimised content will appear here.</span>
+  </div>
+
+</div>
+<script>
+const state = { mainFiles: [], refFiles: [], mainUrl: null, currentTab: 'upload' };
+
+function switchTab(btn, tab) {
+  state.currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  ['upload','url','paste'].forEach(t => {
+    document.getElementById('tab-' + t).style.display = t === tab ? '' : 'none';
+  });
+}
+
+function onAudienceChange() {
+  const sel = document.getElementById('audience');
+  const custom = document.getElementById('customAudience');
+  custom.style.display = sel.value === 'custom' ? '' : 'none';
+  if (sel.value === 'custom') custom.focus();
+}
+
+function getAudience() {
+  const sel = document.getElementById('audience');
+  if (sel.value === 'custom') {
+    return document.getElementById('customAudience').value.trim() || 'general business buyer';
+  }
+  return sel.value;
+}
+
+function onDragOver(e, id) { e.preventDefault(); document.getElementById(id).classList.add('drag-over'); }
+function onDragLeave(e, id) { document.getElementById(id).classList.remove('drag-over'); }
+
+function onDrop(e, type) {
+  e.preventDefault();
+  document.getElementById(type === 'main' ? 'mainDrop' : 'refDrop').classList.remove('drag-over');
+  Array.from(e.dataTransfer.files).forEach(f => addFile(f, type));
+}
+
+function onFileChange(e, type) {
+  Array.from(e.target.files).forEach(f => addFile(f, type));
+  e.target.value = '';
+}
+
+function addFile(file, type) {
+  const allowed = type === 'main' ? ['.txt','.doc','.docx'] : ['.txt','.doc','.docx','.pdf'];
+  const ext = '.' + file.name.split('.').pop().toLowerCase();
+  if (!allowed.includes(ext)) return;
+  const arr = type === 'main' ? state.mainFiles : state.refFiles;
+  if (arr.find(f => f.name === file.name)) return;
+  arr.push(file);
+  renderPills(type);
+}
+
+function addUrl() {
+  const val = document.getElementById('urlInput').value.trim();
+  document.getElementById('urlError').textContent = '';
+  if (!val) return;
+  try { new URL(val); } catch(e) { document.getElementById('urlError').textContent = 'Please enter a valid URL.'; return; }
+  state.mainUrl = val;
+  document.getElementById('urlInput').value = '';
+  renderPills('main');
+}
+
+function renderPills(type) {
+  const container = document.getElementById(type + 'Pills');
+  container.innerHTML = '';
+  if (type === 'main') {
+    state.mainFiles.forEach((f, i) => container.appendChild(makePill(f.name, () => { state.mainFiles.splice(i,1); renderPills('main'); })));
+    if (state.mainUrl) {
+      const short = state.mainUrl.replace(/^https?:\/\//, '').substring(0, 45);
+      container.appendChild(makePill(short, () => { state.mainUrl = null; renderPills('main'); }));
+    }
+  } else {
+    state.refFiles.forEach((f, i) => container.appendChild(makePill(f.name, () => { state.refFiles.splice(i,1); renderPills('ref'); }, true)));
+  }
+}
+
+function makePill(label, onRemove, isRef) {
+  const div = document.createElement('div');
+  div.className = 'pill' + (isRef ? ' pill-ref' : '');
+  div.innerHTML = `<span>${label}</span>`;
+  const btn = document.createElement('button');
+  btn.innerHTML = '&times;';
+  btn.onclick = onRemove;
+  div.appendChild(btn);
+  return div;
+}
+
+function updateCharCount() {
+  const v = document.getElementById('pasteInput').value;
+  document.getElementById('charCount').textContent = v.length.toLocaleString() + ' characters';
+}
+
+async function readFileAsText(file) {
+  return new Promise(resolve => {
+    const r = new FileReader();
+    r.onload = e => resolve(e.target.result);
+    r.onerror = () => resolve('[Could not read: ' + file.name + ']');
+    r.readAsText(file);
+  });
+}
+
+async function runGeo() {
+  document.getElementById('runError').textContent = '';
+
+  const tab = state.currentTab;
+  let mainContent = '';
+
+  if (tab === 'upload') {
+    if (!state.mainFiles.length) { document.getElementById('runError').textContent = 'Please upload a file first.'; return; }
+    mainContent = (await Promise.all(state.mainFiles.map(readFileAsText))).join('\n\n---\n\n');
+  } else if (tab === 'url') {
+    if (!state.mainUrl) { document.getElementById('runError').textContent = 'Please add a URL first.'; return; }
+    mainContent = '[Content from URL: ' + state.mainUrl + ']\n\nFetch and use the content from this URL as the source to optimise.';
+  } else {
+    mainContent = document.getElementById('pasteInput').value.trim();
+    if (!mainContent) { document.getElementById('runError').textContent = 'Please paste some content first.'; return; }
+  }
+
+  const contentType = document.getElementById('contentType').value;
+  const audience = getAudience();
+
+  let refContext = '';
+  if (state.refFiles.length) {
+    const texts = await Promise.all(state.refFiles.map(readFileAsText));
+    refContext = '\n\n---\nREFERENCE DOCUMENTS (use for brand voice, facts, and proof points):\n\n' + texts.map((t,i) => `[${state.refFiles[i].name}]\n${t}`).join('\n\n');
+  }
+
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Optimising...';
+  document.getElementById('copyBtn').style.display = 'none';
+  document.getElementById('outputArea').innerHTML = '<span class="output-placeholder">Generating GEO-optimised content...</span>';
+
+  const systemPrompt = `You are a GEO (Generative Engine Optimisation) content specialist. Your job is to rewrite content so it surfaces in AI-generated recommendations, not just search rankings.
+
+GEO principles you follow:
+- Optimise for recommendations, not just visibility. The goal is for an LLM to choose this brand when a buyer describes a problem it solves.
+- Lead with clear positioning: what problem does this solve, who for, why better than alternatives, and what proof exists.
+- Use short, declarative sentences. One idea per sentence. No padding.
+- Reduce ambiguity. Be specific about audiences, use cases, outcomes, and differentiators.
+- Surface fitness signals repeatedly: the attributes that make this brand recommendable.
+- Include proof where possible: results, metrics, client outcomes.
+- Write in a way that reduces uncertainty for both a buyer and an AI model.
+- Content should function as commercial content marketing, not keyword-indexed filler.
+- No em dashes. No vague brand language. No generic category mush.
+- Use sentence case for headings.
+- Avoid phrases that sound AI-generated. Write like a knowledgeable human.
+- Structure content with clear headings so LLMs can extract and repurpose sections.
+- Each section should answer: what buying situation is this for, what problem is solved, why choose this, what is the proof.
+
+Output format:
+- Rewrite the content fully for GEO. Keep the same information but restructure and rewrite it.
+- Use short paragraphs (2-3 sentences max per paragraph).
+- Add a brief "Why this content is GEO-ready" note at the end (3-4 bullet points) explaining what you changed and why.`;
+
+  const userPrompt = `Content type: ${contentType}
+Target audience: ${audience}
+
+SOURCE CONTENT TO OPTIMISE:
+${mainContent}${refContext}
+
+Rewrite this content so it is fully GEO-optimised. Apply all GEO principles. Keep the core message and facts but make positioning, proof, and fitness signals clear and extractable. Write for the target audience. No em dashes. Short sentences. Specific claims only.`;
+
+  try {
+    const res = await fetch('/api/optimise', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }]
+      })
+    });
+
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message || data.error);
+    const text = data.content?.map(b => b.text || '').join('') || '';
+    document.getElementById('outputArea').textContent = text;
+    document.getElementById('copyBtn').style.display = '';
+  } catch(e) {
+    document.getElementById('outputArea').innerHTML = `<span style="color:var(--text-danger)">Error: ${e.message || 'Something went wrong. Please try again.'}</span>`;
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = 'Optimise for GEO';
+}
+
+function copyOutput() {
+  const text = document.getElementById('outputArea').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = 'Copied';
+    setTimeout(() => { btn.textContent = 'Copy output'; }, 1800);
+  });
+}
+</script>
+</body>
+</html>
