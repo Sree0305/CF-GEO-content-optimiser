@@ -35,30 +35,46 @@ export default async (req, context) => {
     });
   }
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2000,
-      system: body.system,
-      messages: body.messages,
-    }),
-  });
+  const maxRetries = 4;
+  const baseDelay = 2000;
 
-  const data = await response.json();
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2000,
+        system: body.system,
+        messages: body.messages,
+      }),
+    });
 
-  return new Response(JSON.stringify(data), {
-    status: response.status,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-    },
-  });
+    const data = await response.json();
+
+    const isOverloaded =
+      response.status === 529 ||
+      (data.error && data.error.type === 'overloaded_error') ||
+      (data.error && typeof data.error.message === 'string' && data.error.message.toLowerCase().includes('overload'));
+
+    if (isOverloaded && attempt < maxRetries - 1) {
+      const delay = baseDelay * Math.pow(2, attempt);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      continue;
+    }
+
+    return new Response(JSON.stringify(data), {
+      status: response.status,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      },
+    });
+  }
 };
 
 export const config = {
